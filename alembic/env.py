@@ -21,6 +21,13 @@ from app.models import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
+# Override sqlalchemy.url from DATABASE_URL env var if set
+db_url = os.environ.get("DATABASE_URL")
+if db_url:
+    # alembic needs psycopg2 (sync) driver; swap asyncpg if present
+    db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", db_url)
+
 def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
