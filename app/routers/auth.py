@@ -151,12 +151,13 @@ async def login(data: LoginIn, db: AsyncSession = Depends(get_async_session)):
 
     # 3. Dev default fallback for admin
     if data.password:
+        user_role = "admin" if data.username.lower() == "admin" else "customer"
         return {
             "access_token": f"dev_access_token_{data.username}",
             "refresh_token": f"dev_refresh_token_{data.username}",
             "token_type": "bearer",
             "expires_in": 3600,
-            "user": {"username": data.username}
+            "user": {"username": data.username, "role": user_role}
         }
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
