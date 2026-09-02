@@ -26,6 +26,7 @@ db_url = os.environ.get("DATABASE_URL")
 if db_url:
     # alembic needs psycopg2 (sync) driver; swap asyncpg if present
     db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+    db_url = db_url.replace("postgres://", "postgresql://")
     config.set_main_option("sqlalchemy.url", db_url)
 
 def run_migrations_offline():

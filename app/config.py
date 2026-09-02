@@ -28,6 +28,15 @@ class Settings(BaseSettings):
         env_file = ".env"
 
     @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        url = str(self.DATABASE_URL)
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
+    @property
     def MEDIA_ROOT(self) -> str:
         """Resolve and return the media root path.
 

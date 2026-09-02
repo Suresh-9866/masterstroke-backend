@@ -135,6 +135,47 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['receipt_id'], ['receipt.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('subscribers',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('business_name', sa.String(), nullable=False),
+    sa.Column('business_category', sa.String(), nullable=False),
+    sa.Column('owner_name', sa.String(), nullable=False),
+    sa.Column('total_business_taken', sa.Float(), nullable=True),
+    sa.Column('total_business_given', sa.Float(), nullable=True),
+    sa.Column('business_count', sa.Integer(), nullable=True),
+    sa.Column('leads', sa.Integer(), nullable=True),
+    sa.Column('s_member_induction', sa.String(), nullable=True),
+    sa.Column('b_member_induction', sa.String(), nullable=True),
+    sa.Column('total_rewards_gained', sa.Integer(), nullable=True),
+    sa.Column('benefit_claim_status', sa.String(), nullable=True),
+    sa.Column('phone', sa.String(), nullable=True),
+    sa.Column('email', sa.String(), nullable=True),
+    sa.Column('location', sa.String(), nullable=True),
+    sa.Column('joined_date', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('beneficiaries',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('beneficiary_name', sa.String(), nullable=False),
+    sa.Column('status', sa.String(), nullable=True),
+    sa.Column('whatsapp_number', sa.String(), nullable=True),
+    sa.Column('location', sa.String(), nullable=True),
+    sa.Column('total_business_given', sa.Float(), nullable=True),
+    sa.Column('s_member_induction', sa.String(), nullable=True),
+    sa.Column('b_member_induction', sa.String(), nullable=True),
+    sa.Column('total_rewards_gained', sa.Integer(), nullable=True),
+    sa.Column('benefit_claim_status', sa.String(), nullable=True),
+    sa.Column('email', sa.String(), nullable=True),
+    sa.Column('subscriber_name', sa.String(), nullable=True),
+    sa.Column('subscriber_id', sa.String(), nullable=True),
+    sa.Column('occupation', sa.String(), nullable=True),
+    sa.Column('age', sa.Integer(), nullable=True),
+    sa.Column('gender', sa.String(), nullable=True),
+    sa.Column('jobs_taken', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 

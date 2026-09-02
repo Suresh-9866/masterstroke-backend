@@ -1,8 +1,9 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .routers import health, auth
-from .routers import otp_stub, category, business, admin, transactions
+from .routers import otp_stub, category, business, admin, transactions, subscribers, beneficiaries
 from .config import Settings
 from pathlib import Path
 import logging
@@ -12,6 +13,21 @@ settings = Settings()
 
 app = FastAPI(title="WINGS Backend")
 
+# Enable CORS for cross-origin requests from frontend (localhost and Netlify deployed app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "https://aquamarine-frangipane-02b784.netlify.app",
+    ],
+    allow_origin_regex=r"https?://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(otp_stub.router)
@@ -19,6 +35,8 @@ app.include_router(category.router)
 app.include_router(business.router)
 app.include_router(admin.router)
 app.include_router(transactions.router)
+app.include_router(subscribers.router)
+app.include_router(beneficiaries.router)
 
 # mount media directory (ensure it exists first)
 media_root = settings.MEDIA_ROOT

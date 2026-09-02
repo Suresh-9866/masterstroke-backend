@@ -9,7 +9,9 @@ class UserProfile(Base):
     __tablename__ = "user_profile"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    keycloak_sub = Column(String, unique=True, index=True, nullable=False)
+    keycloak_sub = Column(String, unique=True, index=True, nullable=True)
+    username = Column(String, unique=True, index=True, nullable=True)
+    password_hash = Column(String, nullable=True)
     role = Column(Enum("admin", "business", "customer", name="user_roles"), nullable=False)
     full_name = Column(String, nullable=True)
     email = Column(String, nullable=True)
