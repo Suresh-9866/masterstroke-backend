@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -6,6 +6,8 @@ from typing import List, Optional
 
 from ..database import get_async_session
 from ..models.subscriber import Subscriber
+from ..services.whatsapp import send_whatsapp_template
+
 
 router = APIRouter(prefix="/subscribers", tags=["subscribers"])
 
@@ -45,7 +47,7 @@ class SubscriberUpdate(BaseModel):
 
 @router.get("/")
 async def get_subscribers(db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Subscriber).order_by(Subscriber.id.asc())
+    stmt = select(Subscriber).order_by(Subscriber.id.desc())
     res = await db.execute(stmt)
     subscribers = res.scalars().all()
     return subscribers
@@ -60,7 +62,7 @@ async def get_subscriber(subscriber_id: int, db: AsyncSession = Depends(get_asyn
     return subscriber
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_subscriber(data: SubscriberCreate, db: AsyncSession = Depends(get_async_session)):
+async def create_subscriber(data: SubscriberCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_async_session)):
     subscriber = Subscriber(
         business_name=data.business_name,
         business_category=data.business_category,
@@ -81,7 +83,12 @@ async def create_subscriber(data: SubscriberCreate, db: AsyncSession = Depends(g
     db.add(subscriber)
     await db.commit()
     await db.refresh(subscriber)
+
+    if subscriber.phone:
+        background_tasks.add_task(send_whatsapp_template, subscriber.phone, "hello_world")
+
     return subscriber
+
 
 @router.put("/{subscriber_id}")
 async def update_subscriber(subscriber_id: int, data: SubscriberUpdate, db: AsyncSession = Depends(get_async_session)):
@@ -107,6 +114,21 @@ async def delete_subscriber(subscriber_id: int, db: AsyncSession = Depends(get_a
     if not subscriber:
         raise HTTPException(status_code=404, detail="Subscriber not found")
 
-    await db.delete(subscriber)
+    subscriber.is_deleted = True
     await db.commit()
-    return {"status": "deleted", "id": subscriber_id}
+    await db.refresh(subscriber)
+    return {"status": "soft_deleted", "id": subscriber_id, "subscriber": subscriber}
+
+@router.post("/{subscriber_id}/restore")
+async def restore_subscriber(subscriber_id: int, db: AsyncSession = Depends(get_async_session)):
+    stmt = select(Subscriber).where(Subscriber.id == subscriber_id)
+    res = await db.execute(stmt)
+    subscriber = res.scalars().first()
+    if not subscriber:
+        raise HTTPException(status_code=404, detail="Subscriber not found")
+
+    subscriber.is_deleted = False
+    await db.commit()
+    await db.refresh(subscriber)
+    return {"status": "restored", "id": subscriber_id, "subscriber": subscriber}
+

@@ -1,10 +1,12 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from pathlib import Path
 import os
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     DATABASE_URL: str
     KEYCLOAK_SERVER_URL: str | None = None
     KEYCLOAK_REALM: str | None = None
@@ -15,6 +17,18 @@ class Settings(BaseSettings):
     KEYCLOAK_ADMIN_PASSWORD: str | None = None
     KEYCLOAK_ISSUER: str | None = None
     DEBUG_RETURN_OTP: bool = False
+
+    # SMTP Email Configuration
+    SMTP_SERVER: str | None = "smtp.gmail.com"
+    SMTP_PORT: int | None = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+
+    # Meta WhatsApp Configuration
+    META_WA_PHONE_NUMBER_ID: str | None = None
+    META_WA_ACCESS_TOKEN: str | None = None
+
+
     # read raw env var MEDIA_ROOT into these fields; some environments may
     # provide `MEDIA_ROOT` which pydantic maps to `media_root` (lowercased),
     # so accept both names to avoid validation errors.
@@ -24,8 +38,9 @@ class Settings(BaseSettings):
     MAX_IMAGE_SIZE_MB: int = 5
     POINTS_PER_100_INR: int = 10
 
-    class Config:
-        env_file = ".env"
+
+
+
 
     @property
     def ASYNC_DATABASE_URL(self) -> str:

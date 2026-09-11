@@ -13,3 +13,4 @@ from . import reward  # noqa: F401
 from . import user_profile  # noqa: F401
 from . import subscriber  # noqa: F401
 from . import beneficiary  # noqa: F401
+from . import user_session  # noqa: F401

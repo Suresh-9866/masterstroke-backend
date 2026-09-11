@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
 from datetime import datetime
 from . import Base
 
@@ -21,4 +21,6 @@ class Subscriber(Base):
     email = Column(String, nullable=True)
     location = Column(String, nullable=True)
     joined_date = Column(String, nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+

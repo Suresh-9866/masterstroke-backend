@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from ..database import get_async_session
 from ..models.beneficiary import Beneficiary
+from ..services.whatsapp import send_whatsapp_template
 
 router = APIRouter(prefix="/beneficiaries", tags=["beneficiaries"])
 
@@ -57,7 +58,7 @@ class BeneficiaryUpdate(BaseModel):
 
 @router.get("/")
 async def get_beneficiaries(db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Beneficiary).order_by(Beneficiary.id.asc())
+    stmt = select(Beneficiary).order_by(Beneficiary.id.desc())
     res = await db.execute(stmt)
     beneficiaries = res.scalars().all()
     return beneficiaries
@@ -72,7 +73,7 @@ async def get_beneficiary(beneficiary_id: int, db: AsyncSession = Depends(get_as
     return beneficiary
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_beneficiary(data: BeneficiaryCreate, db: AsyncSession = Depends(get_async_session)):
+async def create_beneficiary(data: BeneficiaryCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_async_session)):
     beneficiary = Beneficiary(
         beneficiary_name=data.beneficiary_name,
         status=data.status or "Active",
@@ -94,10 +95,14 @@ async def create_beneficiary(data: BeneficiaryCreate, db: AsyncSession = Depends
     db.add(beneficiary)
     await db.commit()
     await db.refresh(beneficiary)
+
+    if beneficiary.whatsapp_number:
+        background_tasks.add_task(send_whatsapp_template, beneficiary.whatsapp_number, "hello_world")
+
     return beneficiary
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
-async def signup_beneficiary(data: BeneficiarySignup, db: AsyncSession = Depends(get_async_session)):
+async def signup_beneficiary(data: BeneficiarySignup, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_async_session)):
     beneficiary = Beneficiary(
         beneficiary_name=data.beneficiary_name,
         status="Active",
@@ -119,7 +124,12 @@ async def signup_beneficiary(data: BeneficiarySignup, db: AsyncSession = Depends
     db.add(beneficiary)
     await db.commit()
     await db.refresh(beneficiary)
+
+    if beneficiary.whatsapp_number:
+        background_tasks.add_task(send_whatsapp_template, beneficiary.whatsapp_number, "hello_world")
+
     return {"status": "success", "message": "Beneficiary registered successfully", "beneficiary": beneficiary}
+
 
 @router.put("/{beneficiary_id}")
 async def update_beneficiary(beneficiary_id: int, data: BeneficiaryUpdate, db: AsyncSession = Depends(get_async_session)):
@@ -145,6 +155,23 @@ async def delete_beneficiary(beneficiary_id: int, db: AsyncSession = Depends(get
     if not beneficiary:
         raise HTTPException(status_code=404, detail="Beneficiary not found")
 
-    await db.delete(beneficiary)
+    beneficiary.is_deleted = True
+    beneficiary.status = "Deleted"
     await db.commit()
-    return {"status": "deleted", "id": beneficiary_id}
+    await db.refresh(beneficiary)
+    return {"status": "soft_deleted", "id": beneficiary_id, "beneficiary": beneficiary}
+
+@router.post("/{beneficiary_id}/restore")
+async def restore_beneficiary(beneficiary_id: int, db: AsyncSession = Depends(get_async_session)):
+    stmt = select(Beneficiary).where(Beneficiary.id == beneficiary_id)
+    res = await db.execute(stmt)
+    beneficiary = res.scalars().first()
+    if not beneficiary:
+        raise HTTPException(status_code=404, detail="Beneficiary not found")
+
+    beneficiary.is_deleted = False
+    beneficiary.status = "Active"
+    await db.commit()
+    await db.refresh(beneficiary)
+    return {"status": "restored", "id": beneficiary_id, "beneficiary": beneficiary}
+

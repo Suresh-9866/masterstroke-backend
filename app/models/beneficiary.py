@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
 from datetime import datetime
 from . import Base
 
@@ -22,4 +22,6 @@ class Beneficiary(Base):
     age = Column(Integer, nullable=True)
     gender = Column(String, nullable=True)
     jobs_taken = Column(Integer, default=0)
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+

@@ -1,6 +1,14 @@
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
 
 from .routers import health, auth
 from .routers import otp_stub, category, business, admin, transactions, subscribers, beneficiaries
@@ -47,6 +55,12 @@ try:
 except Exception as exc:
     # fallback: log and continue without mounting to avoid crashing the app
     logging.error("Failed to mount media directory %s: %s", media_root, exc)
+
+from .database import init_db
+
+@app.on_event("startup")
+async def on_startup():
+    await init_db()
 
 @app.get("/ready")
 async def ready():
