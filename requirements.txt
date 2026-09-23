@@ -11,3 +11,4 @@ python-dotenv>=1.0.0
 httpx>=0.24.0
 PyJWT[crypto]>=2.6.0
 psycopg2-binary
+boto3>=1.26.0

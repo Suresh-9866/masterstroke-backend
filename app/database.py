@@ -22,6 +22,10 @@ async def init_db():
             await conn.run_sync(Base.metadata.create_all)
             await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;"))
             await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;"))
+            await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS ad_image VARCHAR;"))
+            await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS ad_description VARCHAR;"))
+            await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS ad_start_date VARCHAR;"))
+            await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS ad_end_date VARCHAR;"))
     except Exception as e:
         print("Database init_db error:", e)
 

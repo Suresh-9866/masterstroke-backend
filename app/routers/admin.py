@@ -176,3 +176,21 @@ async def audit_logs(
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+# System settings storage for admin configurations
+system_settings = {
+    "hero_banner_url": "/images/ad1.jpg"
+}
+
+class HeroBannerUpdate(BaseModel):
+    hero_banner_url: str
+
+@router.get("/hero-banner")
+async def get_hero_banner():
+    return {"hero_banner_url": system_settings.get("hero_banner_url", "/images/ad1.jpg")}
+
+@router.post("/hero-banner")
+async def update_hero_banner(body: HeroBannerUpdate):
+    system_settings["hero_banner_url"] = body.hero_banner_url
+    return {"hero_banner_url": system_settings["hero_banner_url"], "message": "Hero banner updated successfully"}

@@ -27,6 +27,10 @@ class SubscriberCreate(BaseModel):
     email: Optional[str] = None
     location: Optional[str] = None
     joined_date: Optional[str] = None
+    ad_image: Optional[str] = None
+    ad_description: Optional[str] = None
+    ad_start_date: Optional[str] = None
+    ad_end_date: Optional[str] = None
 
 class SubscriberUpdate(BaseModel):
     business_name: Optional[str] = None
@@ -44,6 +48,10 @@ class SubscriberUpdate(BaseModel):
     email: Optional[str] = None
     location: Optional[str] = None
     joined_date: Optional[str] = None
+    ad_image: Optional[str] = None
+    ad_description: Optional[str] = None
+    ad_start_date: Optional[str] = None
+    ad_end_date: Optional[str] = None
 
 @router.get("/")
 async def get_subscribers(db: AsyncSession = Depends(get_async_session)):
@@ -79,6 +87,10 @@ async def create_subscriber(data: SubscriberCreate, background_tasks: Background
         email=data.email,
         location=data.location,
         joined_date=data.joined_date,
+        ad_image=data.ad_image,
+        ad_description=data.ad_description,
+        ad_start_date=data.ad_start_date,
+        ad_end_date=data.ad_end_date,
     )
     db.add(subscriber)
     await db.commit()

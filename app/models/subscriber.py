@@ -22,5 +22,9 @@ class Subscriber(Base):
     location = Column(String, nullable=True)
     joined_date = Column(String, nullable=True)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    ad_image = Column(String, nullable=True)
+    ad_description = Column(String, nullable=True)
+    ad_start_date = Column(String, nullable=True)
+    ad_end_date = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -28,12 +28,34 @@ class Settings(BaseSettings):
     META_WA_PHONE_NUMBER_ID: str | None = None
     META_WA_ACCESS_TOKEN: str | None = None
 
+    # AWS S3 Storage Configuration
+    AWS_ACCESS_KEY_ID: str | None = Field(None, validation_alias="AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str | None = Field(None, validation_alias="AWS_SECRET_ACCESS_KEY")
+    AWS_REGION: str | None = Field("ap-south-1", validation_alias="AWS_REGION")
+    AWS_STORAGE_BUCKET_NAME: str | None = Field(None, validation_alias="AWS_STORAGE_BUCKET_NAME")
+
+    # Alt Env Keys
+    AWS_KEY_ID: str | None = Field(None, validation_alias="AWS_KEY_ID")
+    AWS_SECRET_KEY_ACCESS: str | None = Field(None, validation_alias="AWS_SECRET_KEY_ACCESS")
+    AWS_BUCKET: str | None = Field(None, validation_alias="AWS_BUCKET")
+
+    @property
+    def S3_KEY_ID(self) -> str | None:
+        return self.AWS_ACCESS_KEY_ID or self.AWS_KEY_ID
+
+    @property
+    def S3_SECRET_KEY(self) -> str | None:
+        return self.AWS_SECRET_ACCESS_KEY or self.AWS_SECRET_KEY_ACCESS
+
+    @property
+    def S3_BUCKET(self) -> str | None:
+        return self.AWS_STORAGE_BUCKET_NAME or self.AWS_BUCKET
 
     # read raw env var MEDIA_ROOT into these fields; some environments may
     # provide `MEDIA_ROOT` which pydantic maps to `media_root` (lowercased),
     # so accept both names to avoid validation errors.
-    RAW_MEDIA_ROOT: str | None = Field(None, env="MEDIA_ROOT")
-    media_root: str | None = Field(None, env="MEDIA_ROOT")
+    RAW_MEDIA_ROOT: str | None = Field(None, validation_alias="MEDIA_ROOT")
+    media_root: str | None = Field(None, validation_alias="MEDIA_ROOT")
     MAX_VIDEO_SIZE_MB: int = 50
     MAX_IMAGE_SIZE_MB: int = 5
     POINTS_PER_100_INR: int = 10
