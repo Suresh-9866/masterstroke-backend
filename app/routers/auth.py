@@ -292,17 +292,20 @@ forgot_password_otps: dict = {}
 
 
 def send_email_otp(to_email: str, otp: str) -> bool:
-    smtp_server = os.getenv("SMTP_SERVER") or settings.SMTP_SERVER or "smtp.gmail.com"
-    smtp_port = int(os.getenv("SMTP_PORT") or settings.SMTP_PORT or 587)
-    smtp_user = os.getenv("SMTP_USER") or settings.SMTP_USER or ""
-    smtp_password = os.getenv("SMTP_PASSWORD") or settings.SMTP_PASSWORD or ""
+    smtp_server = (os.getenv("SMTP_SERVER") or settings.SMTP_SERVER or "smtp.gmail.com").strip()
+    smtp_port_val = os.getenv("SMTP_PORT") or settings.SMTP_PORT or 465
+    smtp_port = int(str(smtp_port_val).strip())
+    smtp_user = (os.getenv("SMTP_USER") or settings.SMTP_USER or "").strip()
+    smtp_password = (os.getenv("SMTP_PASSWORD") or settings.SMTP_PASSWORD or "").strip()
+    to_email = to_email.strip()
     
     if not smtp_server or not smtp_user or not smtp_password:
-        print("SMTP credentials not configured in environment or settings.")
+        print("SMTP credentials missing or incomplete. Server:", smtp_server, "User:", smtp_user)
         return False
         
     try:
         import smtplib
+        import ssl
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         
@@ -327,23 +330,37 @@ def send_email_otp(to_email: str, otp: str) -> bool:
         msg.attach(MIMEText(text, "plain"))
         msg.attach(MIMEText(html, "html"))
         
-        # 1. Try SSL Port 465 first (works reliably on Render, AWS, GCP, local)
+        # 1. Try SSL Port 465 with default SSL context
         try:
-            print(f"Connecting via SMTP_SSL to {smtp_server}:465...")
-            with smtplib.SMTP_SSL(smtp_server, 465, timeout=8) as server:
+            print(f"Connecting via SMTP_SSL (default ctx) to {smtp_server}:465...")
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_server, 465, context=context, timeout=12) as server:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, to_email, msg.as_string())
             print(f"Successfully sent OTP email to {to_email} via Port 465 SSL")
             return True
         except Exception as e:
-            print(f"Port 465 SSL attempt failed: {e}")
+            print(f"Port 465 SSL default context attempt failed: {e}")
 
-        # 2. Try configured port with STARTTLS (Port 587)
+        # 2. Fallback: Try SSL Port 465 with unverified context (for Docker/Linux container certificate bundle issues)
+        try:
+            print(f"Connecting via SMTP_SSL (unverified ctx) to {smtp_server}:465...")
+            unverified_ctx = ssl._create_unverified_context()
+            with smtplib.SMTP_SSL(smtp_server, 465, context=unverified_ctx, timeout=12) as server:
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, to_email, msg.as_string())
+            print(f"Successfully sent OTP email to {to_email} via Port 465 SSL (unverified context)")
+            return True
+        except Exception as e:
+            print(f"Port 465 SSL unverified context attempt failed: {e}")
+
+        # 3. Try STARTTLS on configured port (e.g. Port 587)
         if smtp_port != 465:
             try:
                 print(f"Connecting via STARTTLS to {smtp_server}:{smtp_port}...")
-                with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as server:
-                    server.starttls()
+                context = ssl.create_default_context()
+                with smtplib.SMTP(smtp_server, smtp_port, timeout=8) as server:
+                    server.starttls(context=context)
                     server.login(smtp_user, smtp_password)
                     server.sendmail(smtp_user, to_email, msg.as_string())
                 print(f"Successfully sent OTP email to {to_email} via Port {smtp_port}")
