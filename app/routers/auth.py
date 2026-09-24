@@ -292,13 +292,13 @@ forgot_password_otps: dict = {}
 
 
 def send_email_otp(to_email: str, otp: str) -> bool:
-    smtp_server = os.getenv("SMTP_SERVER", "")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER", "")
-    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_server = os.getenv("SMTP_SERVER") or settings.SMTP_SERVER or "smtp.gmail.com"
+    smtp_port = int(os.getenv("SMTP_PORT") or settings.SMTP_PORT or 587)
+    smtp_user = os.getenv("SMTP_USER") or settings.SMTP_USER or ""
+    smtp_password = os.getenv("SMTP_PASSWORD") or settings.SMTP_PASSWORD or ""
     
     if not smtp_server or not smtp_user or not smtp_password:
-        print("SMTP credentials not configured in environment. Using debug OTP.")
+        print("SMTP credentials not configured in environment or settings. Using debug OTP.")
         return False
         
     try:
@@ -327,13 +327,43 @@ def send_email_otp(to_email: str, otp: str) -> bool:
         msg.attach(MIMEText(text, "plain"))
         msg.attach(MIMEText(html, "html"))
         
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, to_email, msg.as_string())
-            
-        print(f"Successfully sent OTP email to {to_email}")
-        return True
+        # 1. If configured for Port 465, use SMTP_SSL directly
+        if smtp_port == 465:
+            try:
+                print(f"Connecting via SMTP_SSL to {smtp_server}:465...")
+                with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.sendmail(smtp_user, to_email, msg.as_string())
+                print(f"Successfully sent OTP email to {to_email} via Port 465 SSL")
+                return True
+            except Exception as e:
+                print(f"Port 465 SSL attempt failed: {e}")
+
+        # 2. Try configured port with STARTTLS (usually 587)
+        try:
+            print(f"Connecting via STARTTLS to {smtp_server}:{smtp_port}...")
+            with smtplib.SMTP(smtp_server, smtp_port, timeout=8) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.sendmail(smtp_user, to_email, msg.as_string())
+            print(f"Successfully sent OTP email to {to_email} via Port {smtp_port}")
+            return True
+        except Exception as e:
+            print(f"Port {smtp_port} STARTTLS attempt failed: {e}")
+
+        # 3. Fallback to Port 465 SSL if STARTTLS on 587 failed (e.g. Render outbound port 587 block)
+        if smtp_port != 465:
+            try:
+                print(f"Fallback connecting via SMTP_SSL to {smtp_server}:465...")
+                with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.sendmail(smtp_user, to_email, msg.as_string())
+                print(f"Successfully sent OTP email to {to_email} via Fallback Port 465 SSL")
+                return True
+            except Exception as e:
+                print(f"Fallback Port 465 SSL attempt failed: {e}")
+
+        return False
     except Exception as e:
         print(f"Error sending email via SMTP: {e}")
         return False

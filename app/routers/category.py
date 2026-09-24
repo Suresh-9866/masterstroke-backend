@@ -25,7 +25,7 @@ class CategoryOut(BaseModel):
     parent_id: int | None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.get("", response_model=list[CategoryOut])
 async def list_categories(page: int = 1, page_size: int = 20, db: AsyncSession = Depends(get_async_session)):

@@ -30,7 +30,7 @@ class UserOut(BaseModel):
     deleted_reason: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DeleteUserIn(BaseModel):
     reason: str
@@ -46,7 +46,7 @@ class AuditLogOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 @router.get("/users", response_model=list[UserOut])
 async def list_users(

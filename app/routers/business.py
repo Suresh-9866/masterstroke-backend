@@ -73,7 +73,7 @@ class BusinessOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CategoryOut(BaseModel):
     id: int
@@ -81,7 +81,7 @@ class CategoryOut(BaseModel):
     slug: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MediaOut(BaseModel):
     id: str
@@ -89,7 +89,7 @@ class MediaOut(BaseModel):
     file_path: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class BusinessDetailOut(BaseModel):
     id: str
@@ -119,7 +119,7 @@ class BusinessDetailOut(BaseModel):
     media: list[MediaOut]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class RejectIn(BaseModel):
     reason: str
