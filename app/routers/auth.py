@@ -298,7 +298,7 @@ def send_email_otp(to_email: str, otp: str) -> bool:
     smtp_password = os.getenv("SMTP_PASSWORD") or settings.SMTP_PASSWORD or ""
     
     if not smtp_server or not smtp_user or not smtp_password:
-        print("SMTP credentials not configured in environment or settings. Using debug OTP.")
+        print("SMTP credentials not configured in environment or settings.")
         return False
         
     try:
@@ -327,41 +327,29 @@ def send_email_otp(to_email: str, otp: str) -> bool:
         msg.attach(MIMEText(text, "plain"))
         msg.attach(MIMEText(html, "html"))
         
-        # 1. If configured for Port 465, use SMTP_SSL directly
-        if smtp_port == 465:
-            try:
-                print(f"Connecting via SMTP_SSL to {smtp_server}:465...")
-                with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
-                    server.login(smtp_user, smtp_password)
-                    server.sendmail(smtp_user, to_email, msg.as_string())
-                print(f"Successfully sent OTP email to {to_email} via Port 465 SSL")
-                return True
-            except Exception as e:
-                print(f"Port 465 SSL attempt failed: {e}")
-
-        # 2. Try configured port with STARTTLS (usually 587)
+        # 1. Try SSL Port 465 first (works reliably on Render, AWS, GCP, local)
         try:
-            print(f"Connecting via STARTTLS to {smtp_server}:{smtp_port}...")
-            with smtplib.SMTP(smtp_server, smtp_port, timeout=8) as server:
-                server.starttls()
+            print(f"Connecting via SMTP_SSL to {smtp_server}:465...")
+            with smtplib.SMTP_SSL(smtp_server, 465, timeout=8) as server:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, to_email, msg.as_string())
-            print(f"Successfully sent OTP email to {to_email} via Port {smtp_port}")
+            print(f"Successfully sent OTP email to {to_email} via Port 465 SSL")
             return True
         except Exception as e:
-            print(f"Port {smtp_port} STARTTLS attempt failed: {e}")
+            print(f"Port 465 SSL attempt failed: {e}")
 
-        # 3. Fallback to Port 465 SSL if STARTTLS on 587 failed (e.g. Render outbound port 587 block)
+        # 2. Try configured port with STARTTLS (Port 587)
         if smtp_port != 465:
             try:
-                print(f"Fallback connecting via SMTP_SSL to {smtp_server}:465...")
-                with smtplib.SMTP_SSL(smtp_server, 465, timeout=10) as server:
+                print(f"Connecting via STARTTLS to {smtp_server}:{smtp_port}...")
+                with smtplib.SMTP(smtp_server, smtp_port, timeout=5) as server:
+                    server.starttls()
                     server.login(smtp_user, smtp_password)
                     server.sendmail(smtp_user, to_email, msg.as_string())
-                print(f"Successfully sent OTP email to {to_email} via Fallback Port 465 SSL")
+                print(f"Successfully sent OTP email to {to_email} via Port {smtp_port}")
                 return True
             except Exception as e:
-                print(f"Fallback Port 465 SSL attempt failed: {e}")
+                print(f"Port {smtp_port} STARTTLS attempt failed: {e}")
 
         return False
     except Exception as e:
@@ -397,17 +385,19 @@ async def forgot_password_request(data: ForgotPasswordRequestIn, db: AsyncSessio
     
     print(f"Forgot password OTP for {email}: {otp}")
     
-    # Try sending real email via SMTP if configured
+    # Try sending real email via SMTP
     email_sent = send_email_otp(email, otp)
     
-    res_data = {
+    if not email_sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send verification email. Please try again or contact support."
+        )
+        
+    return {
         "status": "ok",
         "message": f"Verification code sent to {email}"
     }
-    if not email_sent:
-        res_data["debug_otp"] = otp
-        
-    return res_data
 
 
 class ForgotPasswordVerifyIn(BaseModel):
