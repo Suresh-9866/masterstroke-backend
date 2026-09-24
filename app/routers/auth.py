@@ -291,7 +291,7 @@ async def get_login_history(
 forgot_password_otps: dict = {}
 
 
-def send_email_otp(to_email: str, otp: str) -> bool:
+def send_email_otp(to_email: str, otp: str) -> tuple[bool, str]:
     smtp_server = (os.getenv("SMTP_SERVER") or settings.SMTP_SERVER or "smtp.gmail.com").strip()
     smtp_port_val = os.getenv("SMTP_PORT") or settings.SMTP_PORT or 465
     smtp_port = int(str(smtp_port_val).strip())
@@ -300,9 +300,11 @@ def send_email_otp(to_email: str, otp: str) -> bool:
     to_email = to_email.strip()
     
     if not smtp_server or not smtp_user or not smtp_password:
-        print("SMTP credentials missing or incomplete. Server:", smtp_server, "User:", smtp_user)
-        return False
-        
+        msg = f"Missing SMTP config (server='{smtp_server}', user='{smtp_user}', password_set={bool(smtp_password)})"
+        print(msg)
+        return False, msg
+
+    last_err = "Unknown error"
     try:
         import smtplib
         import ssl
@@ -338,11 +340,12 @@ def send_email_otp(to_email: str, otp: str) -> bool:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, to_email, msg.as_string())
             print(f"Successfully sent OTP email to {to_email} via Port 465 SSL")
-            return True
+            return True, "OK"
         except Exception as e:
-            print(f"Port 465 SSL default context attempt failed: {e}")
+            last_err = f"Port 465 SSL default ctx failed: {e}"
+            print(last_err)
 
-        # 2. Fallback: Try SSL Port 465 with unverified context (for Docker/Linux container certificate bundle issues)
+        # 2. Fallback: Try SSL Port 465 with unverified context
         try:
             print(f"Connecting via SMTP_SSL (unverified ctx) to {smtp_server}:465...")
             unverified_ctx = ssl._create_unverified_context()
@@ -350,9 +353,10 @@ def send_email_otp(to_email: str, otp: str) -> bool:
                 server.login(smtp_user, smtp_password)
                 server.sendmail(smtp_user, to_email, msg.as_string())
             print(f"Successfully sent OTP email to {to_email} via Port 465 SSL (unverified context)")
-            return True
+            return True, "OK"
         except Exception as e:
-            print(f"Port 465 SSL unverified context attempt failed: {e}")
+            last_err = f"Port 465 SSL unverified ctx failed: {e}"
+            print(last_err)
 
         # 3. Try STARTTLS on configured port (e.g. Port 587)
         if smtp_port != 465:
@@ -364,14 +368,16 @@ def send_email_otp(to_email: str, otp: str) -> bool:
                     server.login(smtp_user, smtp_password)
                     server.sendmail(smtp_user, to_email, msg.as_string())
                 print(f"Successfully sent OTP email to {to_email} via Port {smtp_port}")
-                return True
+                return True, "OK"
             except Exception as e:
-                print(f"Port {smtp_port} STARTTLS attempt failed: {e}")
+                last_err = f"Port {smtp_port} STARTTLS failed: {e}"
+                print(last_err)
 
-        return False
+        return False, last_err
     except Exception as e:
-        print(f"Error sending email via SMTP: {e}")
-        return False
+        last_err = f"General SMTP error: {e}"
+        print(last_err)
+        return False, last_err
 
 
 class ForgotPasswordRequestIn(BaseModel):
@@ -403,12 +409,12 @@ async def forgot_password_request(data: ForgotPasswordRequestIn, db: AsyncSessio
     print(f"Forgot password OTP for {email}: {otp}")
     
     # Try sending real email via SMTP
-    email_sent = send_email_otp(email, otp)
+    email_sent, err_detail = send_email_otp(email, otp)
     
     if not email_sent:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification email. Please try again or contact support."
+            detail=f"Failed to send email via SMTP ({err_detail}). Please verify server SMTP configuration."
         )
         
     return {
