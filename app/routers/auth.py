@@ -292,12 +292,71 @@ forgot_password_otps: dict = {}
 
 
 def send_email_otp(to_email: str, otp: str) -> tuple[bool, str]:
+    to_email = to_email.strip()
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2 style="color: #0F4C81; margin-bottom: 5px;">WINGS Platform</h2>
+        <p style="font-size: 14px; color: #555;">Account Password Reset Request</p>
+        <div style="background-color: #F5FAFC; border: 1px solid #008080; padding: 15px; border-radius: 8px; font-size: 24px; font-weight: bold; color: #008080; letter-spacing: 5px; text-align: center; margin: 20px 0;">
+            {otp}
+        </div>
+        <p style="font-size: 13px;">This verification code is valid for <strong>10 minutes</strong>.</p>
+        <p style="color: #888; font-size: 12px; margin-top: 20px;">If you did not request this reset, please ignore this message.</p>
+    </div>
+    """
+
+    # 1. Try Brevo HTTP API (Port 443 - Bypasses Render raw socket firewall)
+    brevo_api_key = (os.getenv("BREVO_API_KEY") or os.getenv("SENDINBLUE_API_KEY") or "").strip()
+    if brevo_api_key:
+        try:
+            print("Sending email via Brevo HTTP API (Port 443)...")
+            sender_email = (os.getenv("SMTP_USER") or "wings.velloredigital@gmail.com").strip()
+            payload = {
+                "sender": {"name": "WINGS Platform", "email": sender_email},
+                "to": [{"email": to_email}],
+                "subject": "WINGS App - Password Reset Verification Code",
+                "htmlContent": html_content
+            }
+            headers = {"api-key": brevo_api_key, "Content-Type": "application/json"}
+            with httpx.Client(timeout=10.0) as client:
+                r = client.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+                if r.status_code in (200, 201, 202):
+                    print(f"Successfully sent OTP email to {to_email} via Brevo HTTP API")
+                    return True, "OK"
+                else:
+                    print(f"Brevo HTTP API returned status {r.status_code}: {r.text}")
+        except Exception as e:
+            print(f"Brevo HTTP API attempt failed: {e}")
+
+    # 2. Try Resend HTTP API (Port 443 - Bypasses Render raw socket firewall)
+    resend_api_key = os.getenv("RESEND_API_KEY", "").strip()
+    if resend_api_key:
+        try:
+            print("Sending email via Resend HTTP API (Port 443)...")
+            payload = {
+                "from": os.getenv("EMAIL_FROM", "WINGS App <onboarding@resend.dev>").strip(),
+                "to": [to_email],
+                "subject": "WINGS App - Password Reset Verification Code",
+                "html": html_content
+            }
+            headers = {"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"}
+            with httpx.Client(timeout=10.0) as client:
+                r = client.post("https://api.resend.com/emails", json=payload, headers=headers)
+                if r.status_code in (200, 201, 202):
+                    print(f"Successfully sent OTP email to {to_email} via Resend HTTP API")
+                    return True, "OK"
+                else:
+                    print(f"Resend HTTP API returned status {r.status_code}: {r.text}")
+        except Exception as e:
+            print(f"Resend HTTP API attempt failed: {e}")
+
+    # 3. Standard SMTP via smtplib (Fallback for Local Dev or Unblocked Hosts)
     smtp_server = (os.getenv("SMTP_SERVER") or settings.SMTP_SERVER or "smtp.gmail.com").strip()
     smtp_port_val = os.getenv("SMTP_PORT") or settings.SMTP_PORT or 465
     smtp_port = int(str(smtp_port_val).strip())
     smtp_user = (os.getenv("SMTP_USER") or settings.SMTP_USER or "").strip()
     smtp_password = (os.getenv("SMTP_PASSWORD") or settings.SMTP_PASSWORD or "").strip()
-    to_email = to_email.strip()
     
     if not smtp_server or not smtp_user or not smtp_password:
         msg = f"Missing SMTP config (server='{smtp_server}', user='{smtp_user}', password_set={bool(smtp_password)})"
@@ -317,22 +376,10 @@ def send_email_otp(to_email: str, otp: str) -> tuple[bool, str]:
         msg["To"] = to_email
         
         text = f"Your WINGS account password reset verification code is: {otp}\nThis code is valid for 10 minutes."
-        html = f"""
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #0F4C81; margin-bottom: 5px;">WINGS Platform</h2>
-            <p style="font-size: 14px; color: #555;">Account Password Reset Request</p>
-            <div style="background-color: #F5FAFC; border: 1px solid #008080; padding: 15px; border-radius: 8px; font-size: 24px; font-weight: bold; color: #008080; letter-spacing: 5px; text-align: center; margin: 20px 0;">
-                {otp}
-            </div>
-            <p style="font-size: 13px;">This verification code is valid for <strong>10 minutes</strong>.</p>
-            <p style="color: #888; font-size: 12px; margin-top: 20px;">If you did not request this reset, please ignore this message.</p>
-        </div>
-        """
-        
         msg.attach(MIMEText(text, "plain"))
-        msg.attach(MIMEText(html, "html"))
+        msg.attach(MIMEText(html_content, "html"))
         
-        # 1. Try SSL Port 465 with default SSL context
+        # Try SSL Port 465 with default SSL context
         try:
             print(f"Connecting via SMTP_SSL (default ctx) to {smtp_server}:465...")
             context = ssl.create_default_context()
@@ -345,7 +392,7 @@ def send_email_otp(to_email: str, otp: str) -> tuple[bool, str]:
             last_err = f"Port 465 SSL default ctx failed: {e}"
             print(last_err)
 
-        # 2. Fallback: Try SSL Port 465 with unverified context
+        # Fallback: Try SSL Port 465 with unverified context
         try:
             print(f"Connecting via SMTP_SSL (unverified ctx) to {smtp_server}:465...")
             unverified_ctx = ssl._create_unverified_context()
@@ -358,7 +405,7 @@ def send_email_otp(to_email: str, otp: str) -> tuple[bool, str]:
             last_err = f"Port 465 SSL unverified ctx failed: {e}"
             print(last_err)
 
-        # 3. Try STARTTLS on configured port (e.g. Port 587)
+        # Try STARTTLS on configured port (e.g. Port 587)
         if smtp_port != 465:
             try:
                 print(f"Connecting via STARTTLS to {smtp_server}:{smtp_port}...")
