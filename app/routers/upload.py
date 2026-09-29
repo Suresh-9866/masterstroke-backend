@@ -28,14 +28,24 @@ async def upload_file(
     content_type = file.content_type or "application/octet-stream"
     filename = file.filename or "file"
 
-    # Validate file format (images and videos)
+    # Validate file format (images, videos, and documents like PDF, DOC, DOCX)
     is_image = content_type.startswith("image/")
     is_video = content_type.startswith("video/")
+    is_doc = (
+        content_type in [
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/plain",
+            "application/octet-stream",
+        ]
+        or filename.lower().endswith((".pdf", ".doc", ".docx", ".txt"))
+    )
 
-    if not (is_image or is_video):
+    if not (is_image or is_video or is_doc):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid file type. Only images (PNG, JPG, WEBP, GIF) and videos (MP4, WEBM, MOV) are supported.",
+            detail="Invalid file type. Supported formats: Images, Videos, and Documents (PDF, DOC, DOCX).",
         )
 
     data = await file.read()

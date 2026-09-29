@@ -39,5 +39,7 @@ class Subscriber(Base):
     ad_description = Column(String, nullable=True)
     ad_start_date = Column(String, nullable=True)
     ad_end_date = Column(String, nullable=True)
+    logo = Column(String, nullable=True)
+    number_of_renewals = Column(Integer, default=0, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

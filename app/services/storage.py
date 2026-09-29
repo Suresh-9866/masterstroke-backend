@@ -29,8 +29,8 @@ def upload_to_s3(file_bytes: bytes, filename: str, content_type: str = "applicat
             aws_secret_access_key=secret_key,
             region_name=region,
         )
-        ext = os.path.splitext(filename)[1]
-        unique_name = f"{uuid4().hex}{ext}"
+        safe_basename = os.path.basename(filename)
+        unique_name = f"{uuid4().hex}_{safe_basename}"
         s3_key = f"{subdir}/{unique_name}" if subdir else unique_name
 
         s3_client.put_object(

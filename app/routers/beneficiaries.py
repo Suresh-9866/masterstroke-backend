@@ -15,6 +15,7 @@ class BeneficiaryCreate(BaseModel):
     status: Optional[str] = "Active"
     whatsapp_number: Optional[str] = None
     location: Optional[str] = None
+    address: Optional[str] = None
     total_business_given: Optional[float] = 0.0
     s_member_induction: Optional[str] = "Pending"
     b_member_induction: Optional[str] = "Pending"
@@ -24,16 +25,31 @@ class BeneficiaryCreate(BaseModel):
     subscriber_name: Optional[str] = None
     subscriber_id: Optional[str] = None
     occupation: Optional[str] = None
+    qualification: Optional[str] = None
+    year_of_passing: Optional[str] = None
+    resume: Optional[str] = None
+    joined_date: Optional[str] = None
+    referrer_type: Optional[str] = None
+    referrer_name: Optional[str] = None
+    referrer_phone: Optional[str] = None
     age: Optional[int] = None
     gender: Optional[str] = None
     jobs_taken: Optional[int] = 0
 
 class BeneficiarySignup(BaseModel):
     beneficiary_name: str
-    email: str
+    email: Optional[str] = None
     whatsapp_number: str
     location: Optional[str] = "Not Specified"
+    address: Optional[str] = None
     occupation: Optional[str] = "Not Specified"
+    qualification: Optional[str] = None
+    year_of_passing: Optional[str] = None
+    resume: Optional[str] = None
+    joined_date: Optional[str] = None
+    referrer_type: Optional[str] = None
+    referrer_name: Optional[str] = None
+    referrer_phone: Optional[str] = None
     age: Optional[int] = None
     gender: Optional[str] = None
     password: Optional[str] = None
@@ -43,6 +59,7 @@ class BeneficiaryUpdate(BaseModel):
     status: Optional[str] = None
     whatsapp_number: Optional[str] = None
     location: Optional[str] = None
+    address: Optional[str] = None
     total_business_given: Optional[float] = None
     s_member_induction: Optional[str] = None
     b_member_induction: Optional[str] = None
@@ -52,6 +69,13 @@ class BeneficiaryUpdate(BaseModel):
     subscriber_name: Optional[str] = None
     subscriber_id: Optional[str] = None
     occupation: Optional[str] = None
+    qualification: Optional[str] = None
+    year_of_passing: Optional[str] = None
+    resume: Optional[str] = None
+    joined_date: Optional[str] = None
+    referrer_type: Optional[str] = None
+    referrer_name: Optional[str] = None
+    referrer_phone: Optional[str] = None
     age: Optional[int] = None
     gender: Optional[str] = None
     jobs_taken: Optional[int] = None
@@ -78,7 +102,8 @@ async def create_beneficiary(data: BeneficiaryCreate, background_tasks: Backgrou
         beneficiary_name=data.beneficiary_name,
         status=data.status or "Active",
         whatsapp_number=data.whatsapp_number or "",
-        location=data.location or "Not Specified",
+        location=data.address or data.location or "Not Specified",
+        address=data.address or data.location or "",
         total_business_given=data.total_business_given or 0.0,
         s_member_induction=data.s_member_induction or "Pending",
         b_member_induction=data.b_member_induction or "Pending",
@@ -88,6 +113,13 @@ async def create_beneficiary(data: BeneficiaryCreate, background_tasks: Backgrou
         subscriber_name=data.subscriber_name or "N/A",
         subscriber_id=data.subscriber_id or "N/A",
         occupation=data.occupation or "Not Specified",
+        qualification=data.qualification,
+        year_of_passing=data.year_of_passing,
+        resume=data.resume,
+        joined_date=data.joined_date,
+        referrer_type=data.referrer_type,
+        referrer_name=data.referrer_name,
+        referrer_phone=data.referrer_phone,
         age=data.age or 0,
         gender=data.gender or "Not Specified",
         jobs_taken=data.jobs_taken or 0,
@@ -107,16 +139,24 @@ async def signup_beneficiary(data: BeneficiarySignup, background_tasks: Backgrou
         beneficiary_name=data.beneficiary_name,
         status="Active",
         whatsapp_number=data.whatsapp_number,
-        location=data.location or "Not Specified",
+        location=data.address or data.location or "Not Specified",
+        address=data.address or data.location or "",
         total_business_given=0.0,
         s_member_induction="Pending",
         b_member_induction="Pending",
         total_rewards_gained=0,
         benefit_claim_status="Not Claimed",
-        email=data.email,
+        email=data.email or "",
         subscriber_name="Self Signed",
         subscriber_id="WNG-BEN-SELF",
         occupation=data.occupation or "Not Specified",
+        qualification=data.qualification,
+        year_of_passing=data.year_of_passing,
+        resume=data.resume,
+        joined_date=data.joined_date,
+        referrer_type=data.referrer_type,
+        referrer_name=data.referrer_name,
+        referrer_phone=data.referrer_phone,
         age=data.age or 0,
         gender=data.gender or "Not Specified",
         jobs_taken=0,

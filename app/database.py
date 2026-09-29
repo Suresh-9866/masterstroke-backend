@@ -39,6 +39,18 @@ async def init_db():
             await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS referrer_type VARCHAR;"))
             await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS referrer_name VARCHAR;"))
             await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS referrer_phone VARCHAR;"))
+            await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS logo VARCHAR;"))
+            await conn.execute(text("ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS number_of_renewals INTEGER DEFAULT 0;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS address VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS qualification VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS year_of_passing VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS resume VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS joined_date VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS referrer_type VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS referrer_name VARCHAR;"))
+            await conn.execute(text("ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS referrer_phone VARCHAR;"))
+            await conn.execute(text("ALTER TABLE user_profile ALTER COLUMN role TYPE VARCHAR USING role::VARCHAR;"))
+            await conn.execute(text("ALTER TABLE user_profile ALTER COLUMN status TYPE VARCHAR USING status::VARCHAR;"))
     except Exception as e:
         print("Database init_db error:", e)
 
