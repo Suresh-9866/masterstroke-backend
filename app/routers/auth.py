@@ -171,10 +171,10 @@ async def login(data: LoginIn, db: AsyncSession = Depends(get_async_session)):
             except Exception as e:
                 print("Keycloak connection error:", e)
 
-    # 3. Dev default fallback for admin
-    if data.password:
-        user_role = "admin" if data.username.lower() == "admin" else "customer"
-        full_name_val = "System Administrator" if user_role == "admin" else data.username
+    # 3. Dev default fallback for default admin account only
+    if data.username.lower() == "admin" and data.password == "admin":
+        user_role = "admin"
+        full_name_val = "System Administrator"
 
         session_rec = UserSession(
             username=data.username,
