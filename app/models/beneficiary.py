@@ -30,6 +30,8 @@ class Beneficiary(Base):
     age = Column(Integer, nullable=True)
     gender = Column(String, nullable=True)
     jobs_taken = Column(Integer, default=0)
+    password_hash = Column(String, nullable=True)
+    is_password_set = Column(Boolean, default=False, nullable=True)
     is_deleted = Column(Boolean, default=False, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

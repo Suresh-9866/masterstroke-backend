@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from ..database import get_async_session
 from ..models.beneficiary import Beneficiary
-from ..services.whatsapp import send_whatsapp_template
+from ..services.whatsapp import send_whatsapp_template, send_portal_welcome_whatsapp
 
 router = APIRouter(prefix="/beneficiaries", tags=["beneficiaries"])
 
@@ -126,10 +126,16 @@ async def create_beneficiary(data: BeneficiaryCreate, background_tasks: Backgrou
     )
     db.add(beneficiary)
     await db.commit()
-    await db.refresh(beneficiary)
-
-    if beneficiary.whatsapp_number:
-        background_tasks.add_task(send_whatsapp_template, beneficiary.whatsapp_number, "hello_world")
+    target_phone = beneficiary.whatsapp_number
+    if target_phone:
+        login_url = f"http://localhost:3000/beneficiary/login?phone={target_phone}"
+        background_tasks.add_task(
+            send_portal_welcome_whatsapp,
+            target_phone,
+            beneficiary.beneficiary_name,
+            "Beneficiary",
+            login_url
+        )
 
     return beneficiary
 

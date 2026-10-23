@@ -41,5 +41,7 @@ class Subscriber(Base):
     ad_end_date = Column(String, nullable=True)
     logo = Column(String, nullable=True)
     number_of_renewals = Column(Integer, default=0, nullable=True)
+    password_hash = Column(String, nullable=True)
+    is_password_set = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

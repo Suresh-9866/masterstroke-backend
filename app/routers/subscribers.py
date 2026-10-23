@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from ..database import get_async_session
 from ..models.subscriber import Subscriber
-from ..services.whatsapp import send_whatsapp_template
+from ..services.whatsapp import send_whatsapp_template, send_portal_welcome_whatsapp
 
 
 router = APIRouter(prefix="/subscribers", tags=["subscribers"])
@@ -141,8 +141,16 @@ async def create_subscriber(data: SubscriberCreate, background_tasks: Background
     await db.commit()
     await db.refresh(subscriber)
 
-    if subscriber.phone:
-        background_tasks.add_task(send_whatsapp_template, subscriber.phone, "hello_world")
+    target_phone = subscriber.whatsapp_number or subscriber.phone
+    if target_phone:
+        login_url = f"http://localhost:3000/subscriber/login?phone={target_phone}"
+        background_tasks.add_task(
+            send_portal_welcome_whatsapp,
+            target_phone,
+            subscriber.owner_name or subscriber.business_name,
+            "Subscriber",
+            login_url
+        )
 
     return subscriber
 

@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 
 from .routers import health, auth
-from .routers import otp_stub, category, business, admin, transactions, subscribers, beneficiaries, upload, employees
+from .routers import otp_stub, category, business, admin, transactions, subscribers, beneficiaries, upload, employees, portal
 from .config import Settings
 from pathlib import Path
 import logging
@@ -47,6 +47,7 @@ app.include_router(subscribers.router)
 app.include_router(beneficiaries.router)
 app.include_router(upload.router)
 app.include_router(employees.router)
+app.include_router(portal.router)
 
 # mount media directory (ensure it exists first)
 media_root = settings.MEDIA_ROOT
