@@ -7,6 +7,7 @@ from typing import List, Optional
 from ..database import get_async_session
 from ..models.subscriber import Subscriber
 from ..services.whatsapp import send_whatsapp_template, send_portal_welcome_whatsapp
+from .portal import hash_password, DEFAULT_PORTAL_PASSWORD
 
 
 router = APIRouter(prefix="/subscribers", tags=["subscribers"])
@@ -136,6 +137,8 @@ async def create_subscriber(data: SubscriberCreate, background_tasks: Background
         ad_end_date=data.ad_end_date,
         logo=data.logo,
         number_of_renewals=data.number_of_renewals if data.number_of_renewals is not None else 0,
+        password_hash=hash_password(DEFAULT_PORTAL_PASSWORD),
+        is_password_set=True,
     )
     db.add(subscriber)
     await db.commit()

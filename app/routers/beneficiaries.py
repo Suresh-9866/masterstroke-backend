@@ -7,6 +7,7 @@ from typing import List, Optional
 from ..database import get_async_session
 from ..models.beneficiary import Beneficiary
 from ..services.whatsapp import send_whatsapp_template, send_portal_welcome_whatsapp
+from .portal import hash_password, DEFAULT_PORTAL_PASSWORD
 
 router = APIRouter(prefix="/beneficiaries", tags=["beneficiaries"])
 
@@ -123,6 +124,8 @@ async def create_beneficiary(data: BeneficiaryCreate, background_tasks: Backgrou
         age=data.age or 0,
         gender=data.gender or "Not Specified",
         jobs_taken=data.jobs_taken or 0,
+        password_hash=hash_password(DEFAULT_PORTAL_PASSWORD),
+        is_password_set=True,
     )
     db.add(beneficiary)
     await db.commit()
@@ -166,6 +169,8 @@ async def signup_beneficiary(data: BeneficiarySignup, background_tasks: Backgrou
         age=data.age or 0,
         gender=data.gender or "Not Specified",
         jobs_taken=0,
+        password_hash=hash_password(DEFAULT_PORTAL_PASSWORD),
+        is_password_set=True,
     )
     db.add(beneficiary)
     await db.commit()

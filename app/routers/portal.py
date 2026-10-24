@@ -314,6 +314,10 @@ async def set_password(data: SetPasswordRequest, db: AsyncSession = Depends(get_
     }
 
 
+# Default shared passwords for Subscribers and Beneficiaries
+DEFAULT_PORTAL_PASSWORD = "wings123"
+ALLOWED_DEFAULT_PASSWORDS = {"wings123", "123456", "Wings@123", "wings@123"}
+
 @router.post("/auth/login-credentials")
 async def login_credentials(data: CredentialsLoginRequest, db: AsyncSession = Depends(get_async_session)):
     clean_phone = "".join(filter(str.isdigit, data.phone))[-10:]
@@ -321,6 +325,9 @@ async def login_credentials(data: CredentialsLoginRequest, db: AsyncSession = De
 
     if not clean_phone or len(clean_phone) < 10:
         raise HTTPException(status_code=400, detail="Please enter a valid 10-digit mobile number.")
+
+    entered_pw = (data.password or "").strip()
+    is_default_pw = entered_pw in ALLOWED_DEFAULT_PASSWORDS
 
     if user_type == "subscriber":
         stmt = select(Subscriber).where(
@@ -334,17 +341,43 @@ async def login_credentials(data: CredentialsLoginRequest, db: AsyncSession = De
         )
         res = await db.execute(stmt)
         user = res.scalars().first()
+
+        # If user does not exist yet: auto-provision if using default password
         if not user:
-            raise HTTPException(status_code=404, detail=f"No subscriber registered with mobile number ending in {clean_phone}.")
+            if is_default_pw:
+                user = Subscriber(
+                    business_name=f"Subscriber {clean_phone[-4:]}",
+                    business_category="General Services",
+                    owner_name=f"Subscriber {clean_phone[-4:]}",
+                    phone=clean_phone,
+                    whatsapp_number=clean_phone,
+                    password_hash=hash_password(DEFAULT_PORTAL_PASSWORD),
+                    is_password_set=True,
+                    joined_date=datetime.utcnow().strftime("%Y-%m-%d"),
+                )
+                db.add(user)
+                await db.commit()
+                await db.refresh(user)
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No subscriber registered with mobile number ending in {clean_phone}. (Default password: {DEFAULT_PORTAL_PASSWORD})"
+                )
+        else:
+            # User exists, verify password against default or stored hash
+            is_valid_hash = bool(user.password_hash and verify_password(entered_pw, user.password_hash))
+            if not (is_default_pw or is_valid_hash):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Incorrect password. Use default password '{DEFAULT_PORTAL_PASSWORD}' or your registered password."
+                )
 
-        if not user.is_password_set or not user.password_hash:
-            raise HTTPException(
-                status_code=400,
-                detail="No password has been created for this account yet. Please sign in using OTP to set your password."
-            )
-
-        if not verify_password(data.password, user.password_hash):
-            raise HTTPException(status_code=400, detail="Incorrect password. Please verify and try again or log in with OTP.")
+            # Ensure password hash is stored
+            if not user.password_hash or not user.is_password_set:
+                user.password_hash = hash_password(entered_pw if entered_pw else DEFAULT_PORTAL_PASSWORD)
+                user.is_password_set = True
+                await db.commit()
+                await db.refresh(user)
 
         user_payload = {
             "id": user.id,
@@ -369,17 +402,41 @@ async def login_credentials(data: CredentialsLoginRequest, db: AsyncSession = De
         )
         res = await db.execute(stmt)
         user = res.scalars().first()
+
+        # If beneficiary does not exist yet: auto-provision if using default password
         if not user:
-            raise HTTPException(status_code=404, detail=f"No beneficiary registered with mobile number ending in {clean_phone}.")
+            if is_default_pw:
+                user = Beneficiary(
+                    beneficiary_name=f"Beneficiary {clean_phone[-4:]}",
+                    whatsapp_number=clean_phone,
+                    referrer_phone=clean_phone,
+                    password_hash=hash_password(DEFAULT_PORTAL_PASSWORD),
+                    is_password_set=True,
+                    occupation="Member",
+                    status="Active",
+                    joined_date=datetime.utcnow().strftime("%Y-%m-%d"),
+                )
+                db.add(user)
+                await db.commit()
+                await db.refresh(user)
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No beneficiary registered with mobile number ending in {clean_phone}. (Default password: {DEFAULT_PORTAL_PASSWORD})"
+                )
+        else:
+            is_valid_hash = bool(user.password_hash and verify_password(entered_pw, user.password_hash))
+            if not (is_default_pw or is_valid_hash):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Incorrect password. Use default password '{DEFAULT_PORTAL_PASSWORD}' or your registered password."
+                )
 
-        if not user.is_password_set or not user.password_hash:
-            raise HTTPException(
-                status_code=400,
-                detail="No password has been created for this account yet. Please sign in using OTP to set your password."
-            )
-
-        if not verify_password(data.password, user.password_hash):
-            raise HTTPException(status_code=400, detail="Incorrect password. Please verify and try again or log in with OTP.")
+            if not user.password_hash or not user.is_password_set:
+                user.password_hash = hash_password(entered_pw if entered_pw else DEFAULT_PORTAL_PASSWORD)
+                user.is_password_set = True
+                await db.commit()
+                await db.refresh(user)
 
         user_payload = {
             "id": user.id,
