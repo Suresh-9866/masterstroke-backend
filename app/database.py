@@ -1,5 +1,8 @@
 import asyncio
 import logging
+import socket
+import ssl
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text, select
@@ -8,13 +11,62 @@ from .config import Settings
 
 settings = Settings()
 
-db_url = settings.ASYNC_DATABASE_URL
-connect_args = {}
-if "sqlite" not in db_url:
-    connect_args["ssl"] = "require"
+def build_async_engine_and_session(raw_url: str):
+    url = str(raw_url)
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-engine = create_async_engine(db_url, connect_args=connect_args, future=True, echo=False)
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    connect_args = {}
+    if "sqlite" in url:
+        eng = create_async_engine(url, future=True, echo=False)
+        sess = sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)
+        return eng, sess
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    port = parsed.port or 5432
+
+    # Remove query params that asyncpg does not accept (sslmode, channel_binding)
+    query_params = parse_qs(parsed.query)
+    query_params.pop("sslmode", None)
+    query_params.pop("channel_binding", None)
+    new_query = urlencode(query_params, doseq=True)
+
+    endpoint_id = None
+    if hostname and "neon.tech" in hostname:
+        endpoint_id = hostname.split(".")[0]
+
+    # Resolve IPv4 for cloud databases to bypass Windows dual-stack IPv6 blackholes
+    try:
+        if hostname and not hostname.replace(".", "").isdigit():
+            addrinfo = socket.getaddrinfo(hostname, port, socket.AF_INET)
+            if addrinfo:
+                ipv4 = addrinfo[0][4][0]
+                netloc = parsed.netloc.replace(hostname, ipv4)
+                parsed = parsed._replace(netloc=netloc, query=new_query)
+            else:
+                parsed = parsed._replace(query=new_query)
+        else:
+            parsed = parsed._replace(query=new_query)
+    except Exception:
+        parsed = parsed._replace(query=new_query)
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    connect_args["ssl"] = ctx
+
+    if endpoint_id:
+        connect_args["server_settings"] = {"options": f"endpoint={endpoint_id}"}
+
+    final_url = urlunparse(parsed)
+    eng = create_async_engine(final_url, connect_args=connect_args, future=True, echo=False)
+    sess = sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)
+    return eng, sess
+
+engine, async_session = build_async_engine_and_session(settings.DATABASE_URL)
 
 from .models import Base
 from .models.user_profile import UserProfile

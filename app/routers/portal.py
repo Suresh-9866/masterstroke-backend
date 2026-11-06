@@ -853,6 +853,20 @@ async def create_success_story(
     return story
 
 
+@router.delete("/subscribers/{subscriber_id}/success-stories/{story_id}")
+async def delete_success_story(
+    subscriber_id: int,
+    story_id: int,
+    db: AsyncSession = Depends(get_async_session)
+):
+    story = await db.get(SubscriberSuccessStory, story_id)
+    if not story or story.subscriber_id != subscriber_id:
+        raise HTTPException(status_code=404, detail="Success story not found")
+    await db.delete(story)
+    await db.commit()
+    return {"status": "deleted"}
+
+
 @router.post("/subscribers/{subscriber_id}/update-request", status_code=status.HTTP_201_CREATED)
 async def create_update_request(
     subscriber_id: int,

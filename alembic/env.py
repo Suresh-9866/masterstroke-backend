@@ -18,11 +18,13 @@ fileConfig(config.config_file_name)
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from app.models import Base  # noqa: E402
+from app.config import Settings
 
 target_metadata = Base.metadata
 
-# Override sqlalchemy.url from DATABASE_URL env var if set
-db_url = os.environ.get("DATABASE_URL")
+# Override sqlalchemy.url from DATABASE_URL env var or Settings
+settings = Settings()
+db_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
 if db_url:
     # alembic needs psycopg2 (sync) driver; swap asyncpg if present
     db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
